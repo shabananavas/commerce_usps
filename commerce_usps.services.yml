@@ -1,1 +1,3 @@
 services:
+  commerce_usps.usps_rate_request:
+    class: Drupal\commerce_usps\USPSRateRequest
