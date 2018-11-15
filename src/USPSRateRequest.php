@@ -79,6 +79,11 @@ class USPSRateRequest extends USPSRequest {
         $service_code = $rate['@attributes']['CLASSID'];
         $service_name = $this->cleanServiceName($rate['MailService']);
 
+        // Only add the rate if this service is not in the excluded list.
+        if (in_array($service_code, $this->configuration['conditions']['conditions'])) {
+          continue;
+        }
+
         $shipping_service = new ShippingService(
           $service_code,
           $service_name
@@ -161,9 +166,9 @@ class USPSRateRequest extends USPSRequest {
    */
   protected function getPackages() {
     // @todo: Support multiple packages.
-    $package = new USPSPackage($this->commerce_shipment);
+    $shipment = new USPSShipment($this->commerceShipment);
 
-    return [$package->getPackage()];
+    return [$shipment->getPackage()];
   }
 
   /**

@@ -1,0 +1,17 @@
+# Domestic and International package types provided by USPS.
+id: usps_large_flat_rate_box
+remote_id: 'Lg Flat Rate Box'
+label: 'USPS Large Flat Rate Box'
+dimensions:
+  length: 12.25
+  width: 12.25
+  height: 6
+  unit: 'in'
+weight:
+  number: 5
+  unit: 'lb'
+shipping_method: 'usps'
+
+commerce_package_type:
+  class: \Drupal\commerce_shipping\Plugin\Commerce\PackageType\PackageType
+  deriver: \Drupal\commerce_shipping\Plugin\Deriver\PackageTypeDeriver

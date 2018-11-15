@@ -1,0 +1,17 @@
+# Domestic and International package types provided by USPS.
+id: usps_medium_flat_rate_box_top_loading
+remote_id: 'Md Flat Rate Box'
+label: 'USPS Medium Flat Rate Box Top Loading'
+dimensions:
+  length: '11.25'
+  width: '8.75'
+  height: '6'
+  unit: 'in'
+weight:
+  number: 3
+  unit: 'lb'
+shipping_method: 'usps'
+
+commerce_package_type:
+  class: \Drupal\commerce_shipping\Plugin\Commerce\PackageType\PackageType
+  deriver: \Drupal\commerce_shipping\Plugin\Deriver\PackageTypeDeriver

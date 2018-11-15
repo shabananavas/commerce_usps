@@ -16,7 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *  label = @Translation("USPS"),
  * )
  */
-class CommerceUsps extends ShippingMethodBase {
+class USPS extends ShippingMethodBase {
 
   /**
    * The USPSRateRequest class.
@@ -186,6 +186,10 @@ class CommerceUsps extends ShippingMethodBase {
       $this->configuration['api_information']['mode'] = $values['api_information']['mode'];
       $this->configuration['options']['log'] = $values['options']['log'];
       $this->configuration['conditions']['conditions'] = $values['conditions']['conditions'];
+
+      // This is in ShippingMethodBase but it's not run because we are not
+      // using 'services'.
+      $this->configuration['default_package_type'] = $values['default_package_type'];
     }
     parent::submitConfigurationForm($form, $form_state);
   }
