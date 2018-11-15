@@ -127,7 +127,7 @@ class USPS extends ShippingMethodBase {
     $form['api_information']['mode'] = [
       '#type' => 'select',
       '#title' => $this->t('Mode'),
-      '#description' => $this->t('Choose whether to use the test or live mode.'),
+      '#description' => $this->t('Choose whether to use test or live mode.'),
       '#options' => [
         'test' => $this->t('Test'),
         'live' => $this->t('Live'),
