@@ -78,7 +78,7 @@ class USPSRateRequest extends USPSRequest implements USPSRateRequestInterface {
 
     // Set the necessary info needed for the request.
     $this->commerceShipment = $commerce_shipment;
-    $this->initRequest($commerce_shipment);
+    $this->initRequest();
 
     // Fetch the rates.
     $this->uspsRequest->getRate();
@@ -137,11 +137,8 @@ class USPSRateRequest extends USPSRequest implements USPSRateRequestInterface {
 
   /**
    * Initialize the rate request object needed for the USPS API.
-   *
-   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
-   *   A Drupal Commerce shipment entity.
    */
-  protected function initRequest(ShipmentInterface $commerce_shipment) {
+  protected function initRequest() {
     $this->uspsRequest = new Rate(
       $this->configuration['api_information']['user_id']
     );
