@@ -5,12 +5,14 @@ namespace Drupal\commerce_usps\Plugin\Commerce\ShippingMethod;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\PackageTypeManagerInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodBase;
-use Drupal\commerce_usps\USPSRateRequest;
+use Drupal\commerce_usps\USPSRateRequestInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 
 /**
+ * Creates a USPS shipping method.
+ *
  * @CommerceShippingMethod(
  *  id = "usps",
  *  label = @Translation("USPS"),
@@ -21,7 +23,7 @@ class USPS extends ShippingMethodBase {
   /**
    * The USPSRateRequest class.
    *
-   * @var \Drupal\commerce_usps\USPSRateRequest
+   * @var \Drupal\commerce_usps\USPSRateRequestInterface
    */
   protected $uspsRateService;
 
@@ -36,7 +38,7 @@ class USPS extends ShippingMethodBase {
    *   The plugin implementation definition.
    * @param \Drupal\commerce_shipping\PackageTypeManagerInterface $packageTypeManager
    *   The package type manager.
-   * @param \Drupal\commerce_usps\USPSRateRequest $usps_rate_request
+   * @param \Drupal\commerce_usps\USPSRateRequestInterface $usps_rate_request
    *   The rate request service.
    */
   public function __construct(
@@ -44,7 +46,7 @@ class USPS extends ShippingMethodBase {
     $plugin_id,
     $plugin_definition,
     PackageTypeManagerInterface $packageTypeManager,
-    USPSRateRequest $usps_rate_request
+    USPSRateRequestInterface $usps_rate_request
   ) {
     parent::__construct(
       $configuration,
@@ -100,12 +102,14 @@ class USPS extends ShippingMethodBase {
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
     $form = parent::buildConfigurationForm($form, $form_state);
 
+    $description = $this->t('Update your USPS API information.');
+    if (!$this->isConfigured()) {
+      $description = $this->t('Fill in your USPS API information.');
+    }
     $form['api_information'] = [
       '#type' => 'details',
       '#title' => $this->t('API information'),
-      '#description' => $this->isConfigured()
-      ? $this->t('Update your USPS API information.')
-      : $this->t('Fill in your USPS API information.'),
+      '#description' => $description,
       '#weight' => $this->isConfigured() ? 10 : -10,
       '#open' => !$this->isConfigured(),
     ];
@@ -203,9 +207,7 @@ class USPS extends ShippingMethodBase {
       return [];
     }
 
-    $this->uspsRateService->initRequest($shipment);
-
-    return $this->uspsRateService->getRates();
+    return $this->uspsRateService->getRates($shipment);
   }
 
   /**
@@ -215,12 +217,13 @@ class USPS extends ShippingMethodBase {
    *   TRUE if there is enough information to connect, FALSE otherwise.
    */
   protected function isConfigured() {
-    $api_information = $this->configuration['api_information'];
+    $api_config = $this->configuration['api_information'];
 
-    return (
-      !empty($api_information['user_id'])
-      && !empty($api_information['password'])
-    );
+    if (empty($api_config['user_id']) || empty($api_config['password'])) {
+      return FALSE;
+    }
+
+    return TRUE;
   }
 
 }

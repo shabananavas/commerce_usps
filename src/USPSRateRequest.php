@@ -14,7 +14,7 @@ use USPS\ServiceDeliveryCalculator;
  *
  * @package Drupal\commerce_usps
  */
-class USPSRateRequest extends USPSRequest {
+class USPSRateRequest extends USPSRequest implements USPSRateRequestInterface {
 
   /**
    * The commerce shipment entity.
@@ -38,35 +38,47 @@ class USPSRateRequest extends USPSRequest {
   protected $uspsRequest;
 
   /**
-   * Initialize the rate request.
+   * The USPS Shipment object.
    *
-   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
-   *   A Drupal Commerce shipment entity.
+   * @var \Drupal\commerce_usps\USPSShipmentInterface
    */
-  public function initRequest(ShipmentInterface $commerce_shipment) {
-    $this->setShipment($commerce_shipment);
+  protected $uspsShipment;
 
-    $this->uspsRequest = new Rate(
-      $this->configuration['api_information']['user_id']
-    );
-    $this->setMode();
+  /**
+   * USPSRateRequest constructor.
+   *
+   * @param \Drupal\commerce_usps\USPSShipmentInterface $usps_shipment
+   *   The USPS shipment object.
+   */
+  public function __construct(
+    USPSShipmentInterface $usps_shipment
+  ) {
+    $this->uspsShipment = $usps_shipment;
   }
 
   /**
    * Fetch rates from the USPS API.
+   *
+   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
+   *   The commerce shipment.
+   *
+   * @throws \Exception
+   *   Exception when required properties are missing.
+   *
+   * @return array
+   *   An array of ShippingRate objects.
    */
-  public function getRates() {
+  public function getRates(ShipmentInterface $commerce_shipment) {
     // Validate a commerce shipment has been provided.
-    if (empty($this->commerceShipment)) {
+    if (empty($commerce_shipment)) {
       throw new \Exception('Shipment not provided');
     }
 
     $rates = [];
 
-    // Add each package to the request.
-    foreach ($this->getPackages() as $package) {
-      $this->uspsRequest->addPackage($package);
-    }
+    // Set the necessary info needed for the request.
+    $this->commerceShipment = $commerce_shipment;
+    $this->initRequest($commerce_shipment);
 
     // Fetch the rates.
     $this->uspsRequest->getRate();
@@ -124,6 +136,24 @@ class USPSRateRequest extends USPSRequest {
   }
 
   /**
+   * Initialize the rate request object needed for the USPS API.
+   *
+   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
+   *   A Drupal Commerce shipment entity.
+   */
+  protected function initRequest(ShipmentInterface $commerce_shipment) {
+    $this->uspsRequest = new Rate(
+      $this->configuration['api_information']['user_id']
+    );
+    $this->setMode();
+
+    // Add each package to the request.
+    foreach ($this->getPackages() as $package) {
+      $this->uspsRequest->addPackage($package);
+    }
+  }
+
+  /**
    * Utility function to translate service labels.
    *
    * @param string $serviceCode
@@ -142,16 +172,6 @@ class USPSRateRequest extends USPSRequest {
   }
 
   /**
-   * Set the shipment for rate requests.
-   *
-   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
-   *   A Drupal Commerce shipment entity.
-   */
-  protected function setShipment(ShipmentInterface $commerce_shipment) {
-    $this->commerceShipment = $commerce_shipment;
-  }
-
-  /**
    * Set the mode to either test/live.
    */
   protected function setMode() {
@@ -166,9 +186,7 @@ class USPSRateRequest extends USPSRequest {
    */
   protected function getPackages() {
     // @todo: Support multiple packages.
-    $shipment = new USPSShipment($this->commerceShipment);
-
-    return [$shipment->getPackage()];
+    return [$this->uspsShipment->getPackage($this->commerceShipment)];
   }
 
   /**

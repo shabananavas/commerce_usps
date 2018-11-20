@@ -11,7 +11,7 @@ use USPS\RatePackage;
  *
  * @package Drupal\commerce_usps
  */
-class USPSShipment {
+class USPSShipment implements USPSShipmentInterface {
 
   /**
    * The commerce shipment entity.
@@ -28,23 +28,18 @@ class USPSShipment {
   protected $uspsPackage;
 
   /**
-   * USPSPackage constructor.
+   * Returns an initialized rate package object.
    *
    * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
    *   A Drupal Commerce shipment entity.
-   */
-  public function __construct(ShipmentInterface $commerce_shipment) {
-    $this->commerceShipment = $commerce_shipment;
-    $this->uspsPackage = new RatePackage();
-  }
-
-  /**
-   * Returns an initialized rate package object.
    *
    * @return \USPS\RatePackage
    *   The rate package entity.
    */
-  public function getPackage() {
+  public function getPackage(ShipmentInterface $commerce_shipment) {
+    $this->commerceShipment = $commerce_shipment;
+    $this->uspsPackage = new RatePackage();
+
     $this->setService();
     $this->setShipFrom();
     $this->setShipTo();
@@ -138,6 +133,7 @@ class USPSShipment {
    */
   protected function getProductionDate() {
     $date = date('Y-m-d', strtotime("now"));
+
     return $date;
   }
 
