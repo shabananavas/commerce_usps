@@ -11,7 +11,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 
 /**
- * Creates a USPS shipping method.
+ * Provides the USPS shipping method.
  *
  * @CommerceShippingMethod(
  *  id = "usps",
@@ -36,7 +36,7 @@ class USPS extends ShippingMethodBase {
    *   The plugin_id for the plugin instance.
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
-   * @param \Drupal\commerce_shipping\PackageTypeManagerInterface $packageTypeManager
+   * @param \Drupal\commerce_shipping\PackageTypeManagerInterface $package_type_manager
    *   The package type manager.
    * @param \Drupal\commerce_usps\USPSRateRequestInterface $usps_rate_request
    *   The rate request service.
@@ -45,14 +45,14 @@ class USPS extends ShippingMethodBase {
     array $configuration,
     $plugin_id,
     $plugin_definition,
-    PackageTypeManagerInterface $packageTypeManager,
+    PackageTypeManagerInterface $package_type_manager,
     USPSRateRequestInterface $usps_rate_request
   ) {
     parent::__construct(
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $packageTypeManager
+      $package_type_manager
     );
 
     $this->uspsRateService = $usps_rate_request;
