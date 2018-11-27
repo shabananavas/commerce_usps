@@ -5,4 +5,3 @@ services:
 
   commerce_usps.usps_shipment:
     class: Drupal\commerce_usps\USPSShipment
-    arguments: []

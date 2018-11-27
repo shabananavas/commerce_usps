@@ -119,9 +119,9 @@ class USPSRateRequest extends USPSRequest implements USPSRateRequestInterface {
    *   The delivery rate response.
    */
   public function checkDeliveryDate() {
-    $to_address = $this->commerce_shipment->getShippingProfile()
+    $to_address = $this->commerceShipment->getShippingProfile()
       ->get('address');
-    $from_address = $this->commerce_shipment->getOrder()
+    $from_address = $this->commerceShipment->getOrder()
       ->getStore()
       ->getAddress();
 
