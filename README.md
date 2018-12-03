@@ -5,13 +5,10 @@ Provides USPS shipping rates for Drupal Commerce.
 
 ## Development Setup
 
-1. Clone this repository in to Drupal modules folder.
 
-2. Manually get dependencies to installed Drupal.
+1. Use [Composer](https://getcomposer.org/) to get Commerce USPS with all dependencies: `composer require drupal/commerce_usps`
 
-`composer require vinceg/usps-php-api:~1.0`
-
-3. Enable module.
+2. Enable module.
 
 4. Go to /admin/commerce/config/shipping-methods/add:
   - Select 'USPS' as the Plugin
