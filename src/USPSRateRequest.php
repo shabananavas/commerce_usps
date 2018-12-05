@@ -91,8 +91,8 @@ class USPSRateRequest extends USPSRequest implements USPSRateRequestInterface {
         $service_code = $rate['@attributes']['CLASSID'];
         $service_name = $this->cleanServiceName($rate['MailService']);
 
-        // Only add the rate if this service is not in the excluded list.
-        if (in_array($service_code, $this->configuration['conditions']['conditions'])) {
+        // Only add the rate if this service is enabled.
+        if (!in_array($service_code, $this->configuration['services'])) {
           continue;
         }
 

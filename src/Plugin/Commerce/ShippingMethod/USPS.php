@@ -16,6 +16,28 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * @CommerceShippingMethod(
  *  id = "usps",
  *  label = @Translation("USPS"),
+ *  services = {
+ *    "_1" = @translation("Priority Mail 1-Day"),
+ *    "_17" = @translation("Priority Mail 1-Day Medium Flat Rate Box"),
+ *    "_22" = @translation("Priority Mail 1-Day Large Flat Rate Box"),
+ *    "_28" = @translation("Priority Mail 1-Day Small Flat Rate Box"),
+ *    "_16" = @translation("Priority Mail 1-Day Flat Rate Envelope"),
+ *    "_38" = @translation("Priority Mail 1-Day Gift Card Flat Rate Envelope"),
+ *    "_44" = @translation("Priority Mail 1-Day Legal Flat Rate Envelope"),
+ *    "_29" = @translation("Priority Mail 1-Day Padded Flat Rate Envelope"),
+ *    "_42" = @translation("Priority Mail 1-Day Small Flat Rate Envelope"),
+ *    "_40" = @translation("Priority Mail 1-Day Window Flat Rate Envelope"),
+ *    "_3" = @translation("Priority Mail Express 2-Day"),
+ *    "_2" = @translation("Priority Mail Express 2-Day Hold For Pickup"),
+ *    "_13" = @translation("Priority Mail Express 2-Day Flat Rate Envelope"),
+ *    "_27" = @translation("Priority Mail Express 2-Day Flat Rate Envelope Hold For Pickup"),
+ *    "_30" = @translation("Priority Mail Express 2-Day Legal Flat Rate Envelope"),
+ *    "_31" = @translation("Priority Mail Express 2-Day Legal Flat Rate Envelope Hold For Pickup"),
+ *    "_62" = @translation("Priority Mail Express 2-Day Padded Flat Rate Envelope"),
+ *    "_63" = @translation("Priority Mail Express 2-Day Padded Flat Rate Envelope Hold For Pickup"),
+ *    "_7" = @translation("Library Mail Parcel"),
+ *    "_6" = @translation("Media Mail Parcel"),
+ *  }
  * )
  */
 class USPS extends ShippingMethodBase {
@@ -48,6 +70,9 @@ class USPS extends ShippingMethodBase {
     PackageTypeManagerInterface $package_type_manager,
     USPSRateRequestInterface $usps_rate_request
   ) {
+    // Rewrite the service keys to be integers.
+    $plugin_definition = $this->preparePluginDefinition($plugin_definition);
+
     parent::__construct(
       $configuration,
       $plugin_id,
@@ -78,6 +103,35 @@ class USPS extends ShippingMethodBase {
   }
 
   /**
+   * Prepares the service array keys to support integer values.
+   *
+   * See https://www.drupal.org/node/2904467 for more information.
+   *
+   * @TODO: Remove once core issue has been addressed.
+   *
+   * @param array $plugin_definition
+   *   The plugin definition provided to the class.
+   *
+   * @return array
+   *   The prepared plugin definition.
+   */
+  private function preparePluginDefinition(array $plugin_definition) {
+    // Cache and unset the parsed plugin definitions for services.
+    $services = $plugin_definition['services'];
+    unset($plugin_definition['services']);
+
+    // Loop over each service definition and redefine them with
+    // integer keys that match the UPS API.
+    foreach ($services as $key => $service) {
+      // Remove the "_" from the service key.
+      $key_trimmed = str_replace('_', '', $key);
+      $plugin_definition['services'][$key_trimmed] = $service;
+    }
+
+    return $plugin_definition;
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function defaultConfiguration() {
@@ -90,9 +144,6 @@ class USPS extends ShippingMethodBase {
       'options' => [
         'log' => [],
       ],
-      'conditions' => [
-        'conditions' => [],
-      ],
     ] + parent::defaultConfiguration();
   }
 
@@ -101,6 +152,12 @@ class USPS extends ShippingMethodBase {
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
     $form = parent::buildConfigurationForm($form, $form_state);
+
+    // Select all services by default.
+    if (empty($this->configuration['services'])) {
+      $service_ids = array_keys($this->services);
+      $this->configuration['services'] = array_combine($service_ids, $service_ids);
+    }
 
     $description = $this->t('Update your USPS API information.');
     if (!$this->isConfigured()) {
@@ -155,26 +212,6 @@ class USPS extends ShippingMethodBase {
       '#default_value' => $this->configuration['options']['log'],
     ];
 
-    $form['conditions'] = [
-      '#type' => 'details',
-      '#title' => $this->t('USPS rate conditions'),
-    ];
-
-    $form['conditions']['conditions'] = [
-      '#type' => 'checkboxes',
-      '#title' => $this->t('Exclude USPS Rates'),
-      '#description' => $this->t('Set which USPS Rates should be excluded.'),
-      '#options' => [
-        'domestic' => $this->t('Domestic Shipment to Lower 48 States'),
-        'domestic_plus' => $this->t('Domestic Shipment to Alaska & Hawaii'),
-        'domestic_mil' => $this->t('Miliary State Codes: AP, AA, AE'),
-        'international_ca' => $this->t('International Shipment to Canada'),
-        'international_eu' => $this->t('International Shipment to Europe'),
-        'international_as' => $this->t('International Shipment to Asia'),
-      ],
-      '#default_value' => $this->configuration['conditions']['conditions'],
-    ];
-
     return $form;
   }
 
@@ -189,11 +226,6 @@ class USPS extends ShippingMethodBase {
       $this->configuration['api_information']['password'] = $values['api_information']['password'];
       $this->configuration['api_information']['mode'] = $values['api_information']['mode'];
       $this->configuration['options']['log'] = $values['options']['log'];
-      $this->configuration['conditions']['conditions'] = $values['conditions']['conditions'];
-
-      // This is in ShippingMethodBase but it's not run because we are not
-      // using 'services'.
-      $this->configuration['default_package_type'] = $values['default_package_type'];
     }
     parent::submitConfigurationForm($form, $form_state);
   }
