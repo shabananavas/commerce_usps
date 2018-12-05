@@ -7,15 +7,19 @@ namespace Drupal\commerce_usps;
  *
  * @package Drupal\commerce_usps
  */
-class USPSRequest implements USPSRequestInterface {
+abstract class USPSRequest implements USPSRequestInterface {
+
+  /**
+   * The configuration array from a CommerceShippingMethod.
+   *
+   * @var array
+   */
   protected $configuration;
 
   /**
-   * USPSRequest constructor.
-   *
-   * @param $configuration
+   * {@inheritdoc}
    */
-  public function __construct($configuration) {
+  public function setConfig(array $configuration) {
     $this->configuration = $configuration;
   }
 
@@ -23,12 +27,23 @@ class USPSRequest implements USPSRequestInterface {
    * Returns authentication array for a request.
    *
    * @return array
+   *   An array of authentication parameters.
    */
   protected function getAuth() {
     return [
       'user_id' => $this->configuration['api_information']['user_id'],
       'password' => $this->configuration['api_information']['password'],
     ];
+  }
+
+  /**
+   * Determines if the shipping method is in test method..
+   *
+   * @return bool
+   *   Returns TRUE if we're in test mode.
+   */
+  protected function isTestMode() {
+    return $this->configuration['api_information']['mode'] == 'test';
   }
 
 }

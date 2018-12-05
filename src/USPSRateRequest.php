@@ -10,52 +10,79 @@ use USPS\Rate;
 use USPS\ServiceDeliveryCalculator;
 
 /**
- * Class uspsRateRequest
+ * Class USPSRateRequest.
  *
  * @package Drupal\commerce_usps
  */
-class USPSRateRequest extends USPSRequest {
+class USPSRateRequest extends USPSRequest implements USPSRateRequestInterface {
 
-  /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface */
-  protected $commerce_shipment;
+  /**
+   * The commerce shipment entity.
+   *
+   * @var \Drupal\commerce_shipping\Entity\ShipmentInterface
+   */
+  protected $commerceShipment;
 
-  /** @var array */
+  /**
+   * The configuration array from a CommerceShippingMethod.
+   *
+   * @var array
+   */
   protected $configuration;
 
   /**
+   * The USPS rate request API.
+   *
    * @var \USPS\Rate
    */
-  protected $usps_request;
+  protected $uspsRequest;
 
   /**
-   * uspsRateRequest constructor.
+   * The USPS Shipment object.
    *
-   * @param array $configuration
-   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
+   * @var \Drupal\commerce_usps\USPSShipmentInterface
    */
-  public function __construct(array $configuration, ShipmentInterface $commerce_shipment) {
-    parent::__construct($configuration);
-    $this->commerce_shipment = $commerce_shipment;
+  protected $uspsShipment;
 
-    // Initialize the USPS request.
-    $this->initRequest();
+  /**
+   * USPSRateRequest constructor.
+   *
+   * @param \Drupal\commerce_usps\USPSShipmentInterface $usps_shipment
+   *   The USPS shipment object.
+   */
+  public function __construct(
+    USPSShipmentInterface $usps_shipment
+  ) {
+    $this->uspsShipment = $usps_shipment;
   }
 
   /**
+   * Fetch rates from the USPS API.
+   *
+   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $commerce_shipment
+   *   The commerce shipment.
+   *
+   * @throws \Exception
+   *   Exception when required properties are missing.
+   *
    * @return array
+   *   An array of ShippingRate objects.
    */
-  public function getRates() {
-    $rates = [];
-
-
-    // Add each package the the request.
-    foreach ($this->getPackages() as $package) {
-      $this->usps_request->addPackage($package);
+  public function getRates(ShipmentInterface $commerce_shipment) {
+    // Validate a commerce shipment has been provided.
+    if (empty($commerce_shipment)) {
+      throw new \Exception('Shipment not provided');
     }
 
+    $rates = [];
+
+    // Set the necessary info needed for the request.
+    $this->commerceShipment = $commerce_shipment;
+    $this->initRequest();
+
     // Fetch the rates.
-    $this->usps_request->getRate();
-    $response = $this->usps_request->getArrayResponse();
+    $this->uspsRequest->getRate();
+    $response = $this->uspsRequest->getArrayResponse();
 
     // Parse the rate response and create shipping rates array.
     if (!empty($response['RateV4Response']['Package']['Postage'])) {
@@ -63,6 +90,11 @@ class USPSRateRequest extends USPSRequest {
         $price = $rate['Rate'];
         $service_code = $rate['@attributes']['CLASSID'];
         $service_name = $this->cleanServiceName($rate['MailService']);
+
+        // Only add the rate if this service is enabled.
+        if (!in_array($service_code, $this->configuration['services'])) {
+          continue;
+        }
 
         $shipping_service = new ShippingService(
           $service_code,
@@ -80,47 +112,54 @@ class USPSRateRequest extends USPSRequest {
     return $rates;
   }
 
-  protected function initRequest() {
-    $this->usps_request = new Rate(
-      $this->configuration['api_information']['user_id']
-    );
-    $this->setMode();
-  }
-
-  protected function setMode() {
-    $this->usps_request->setTestMode($this->configuration['api_information']['mode'] == 'test');
-  }
-
-  protected function getPackages() {
-    // @todo: Support multiple packages.
-    $package = new USPSPackage($this->commerce_shipment);
-    return [$package->getPackage()];
-  }
-
-  protected function cleanServiceName($service) {
-    // Remove the html encoded trademark markup since it's
-    // not supported in radio labels.
-    return str_replace('&lt;sup&gt;&#8482;&lt;/sup&gt;', '', $service);
-  }
-
+  /**
+   * Checks the delivery date of a USPS shipment.
+   *
+   * @return array
+   *   The delivery rate response.
+   */
   public function checkDeliveryDate() {
-    $to_address = $this->commerce_shipment->getShippingProfile()->get('address');
-    $from_address = $this->commerce_shipment->getOrder()->getStore()->getAddress();
-    // Initiate and set the username provided from usps
+    $to_address = $this->commerceShipment->getShippingProfile()
+      ->get('address');
+    $from_address = $this->commerceShipment->getOrder()
+      ->getStore()
+      ->getAddress();
+
+    // Initiate and set the username provided from usps.
     $delivery = new ServiceDeliveryCalculator($this->configuration['api_information']['user_id']);
-    // Add the zip code we want to lookup the city and state
-    $delivery->addRoute(3,$from_address->getPostalCode(),$to_address->postal_code);
-    // Perform the call and print out the results
+    // Add the zip code we want to lookup the city and state.
+    $delivery->addRoute(3, $from_address->getPostalCode(), $to_address->postal_code);
+    // Perform the call and print out the results.
     $delivery->getServiceDeliveryCalculation();
+
     return $delivery->getArrayResponse();
   }
 
   /**
-   * @param $serviceCode
+   * Initialize the rate request object needed for the USPS API.
+   */
+  protected function initRequest() {
+    $this->uspsRequest = new Rate(
+      $this->configuration['api_information']['user_id']
+    );
+    $this->setMode();
+
+    // Add each package to the request.
+    foreach ($this->getPackages() as $package) {
+      $this->uspsRequest->addPackage($package);
+    }
+  }
+
+  /**
+   * Utility function to translate service labels.
+   *
+   * @param string $serviceCode
+   *   The service code.
    *
    * @return string
+   *   The translated service code.
    */
-  public function translateServiceLables($serviceCode) {
+  protected function translateServiceLables($serviceCode) {
     $label = '';
     if (strtolower($serviceCode) == 'parcel') {
       $label = 'ground';
@@ -130,19 +169,49 @@ class USPSRateRequest extends USPSRequest {
   }
 
   /**
-   * @param $zip_code
-   *
-   * @return int
+   * Set the mode to either test/live.
    */
-  function validateUSAZip($zip_code) {
-    return preg_match("/^([0-9]{5})(-[0-9]{4})?$/i", $zip_code);
+  protected function setMode() {
+    $this->uspsRequest->setTestMode($this->isTestMode());
   }
 
   /**
-   * @return mixed
+   * Get an array of USPS packages.
+   *
+   * @return array
+   *   An array of USPS packages.
    */
-  public function getMode() {
-    return $this->configuration['api_information']['mode'];
+  protected function getPackages() {
+    // @todo: Support multiple packages.
+    return [$this->uspsShipment->getPackage($this->commerceShipment)];
+  }
+
+  /**
+   * Utility function to clean the USPS service name.
+   *
+   * @param string $service
+   *   The service id.
+   *
+   * @return string
+   *   The cleaned up service id.
+   */
+  protected function cleanServiceName($service) {
+    // Remove the html encoded trademark markup since it's
+    // not supported in radio labels.
+    return str_replace('&lt;sup&gt;&#8482;&lt;/sup&gt;', '', $service);
+  }
+
+  /**
+   * Utility function to validate a USA zip code.
+   *
+   * @param string $zip_code
+   *   The zip code.
+   *
+   * @return bool
+   *   Returns TRUE if the zip code was validated.
+   */
+  protected function validateUsaZip($zip_code) {
+    return preg_match("/^([0-9]{5})(-[0-9]{4})?$/i", $zip_code);
   }
 
 }
